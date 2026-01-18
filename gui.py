@@ -8,7 +8,7 @@ class ConverterApp:
     def __init__(self, root):
         self.root = root
         self.root.title("LLA <-> ECEF Converter")
-        self.root.geometry("500x350")
+        self.root.geometry("500x450")
         self.root.resizable(False, False)
 
         # Style
@@ -35,6 +35,10 @@ class ConverterApp:
         # Country Display
         self.country_var = tk.StringVar(value="---")
         self._create_display_row(lla_frame, "Country:", self.country_var, 3)
+
+        # State Display
+        self.state_var = tk.StringVar(value="---")
+        self._create_display_row(lla_frame, "State/Province:", self.state_var, 4)
 
         # Buttons Frame
         btn_frame = ttk.Frame(main_frame)
@@ -69,8 +73,15 @@ class ConverterApp:
     def update_country(self, lat, lon):
         def task():
             self.country_var.set("Loading...")
-            country = geocoding.get_country(lat, lon)
-            self.country_var.set(country)
+            self.state_var.set("Loading...")
+            result = geocoding.get_country(lat, lon)
+            if isinstance(result, dict):
+                self.country_var.set(result.get('country', 'Unknown'))
+                self.state_var.set(result.get('state', 'Unknown'))
+            else:
+                # Handle error cases where string is returned
+                self.country_var.set(result)
+                self.state_var.set("---")
         threading.Thread(target=task, daemon=True).start()
 
     def convert_lla_to_ecef(self):
@@ -110,6 +121,7 @@ class ConverterApp:
         self.lon_var.set("")
         self.alt_var.set("")
         self.country_var.set("---")
+        self.state_var.set("---")
         self.x_var.set("")
         self.y_var.set("")
         self.z_var.set("")

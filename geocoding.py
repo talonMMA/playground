@@ -19,9 +19,12 @@ def get_country(lat, lon):
         location = geolocator.reverse(f"{lat}, {lon}", language='en')
         
         if location and location.raw.get('address'):
-            return location.raw['address'].get('country', "Unknown Location")
+            address = location.raw['address']
+            country = address.get('country', "Unknown Country")
+            state = address.get('state', address.get('province', "Unknown State"))
+            return {"country": country, "state": state}
         else:
-            return "Ocean / Unknown"
+            return {"country": "Ocean / Unknown", "state": "---"}
             
     except (GeocoderTimedOut, GeocoderUnavailable):
         return "Network Error"
