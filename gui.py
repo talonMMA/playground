@@ -15,7 +15,7 @@ class ConverterApp:
         style.configure("TButton", padding=5)
 
         # Main Frame
-        main_frame = ttk.Padding(self.root, padding="10")
+        main_frame = ttk.Frame(self.root, padding="10")
         main_frame.pack(fill=tk.BOTH, expand=True)
 
         # LLA Frame
