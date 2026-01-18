@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+import threading
 import lla_to_ecef
+import geocoding
 
 class ConverterApp:
     def __init__(self, root):
@@ -29,6 +31,10 @@ class ConverterApp:
         self._create_input_row(lla_frame, "Latitude (deg):", self.lat_var, 0)
         self._create_input_row(lla_frame, "Longitude (deg):", self.lon_var, 1)
         self._create_input_row(lla_frame, "Altitude (m):", self.alt_var, 2)
+        
+        # Country Display
+        self.country_var = tk.StringVar(value="---")
+        self._create_display_row(lla_frame, "Country:", self.country_var, 3)
 
         # Buttons Frame
         btn_frame = ttk.Frame(main_frame)
@@ -55,6 +61,18 @@ class ConverterApp:
         ttk.Label(parent, text=label_text, width=15).grid(row=row, column=0, sticky=tk.W)
         ttk.Entry(parent, textvariable=variable, width=30).grid(row=row, column=1, sticky=tk.W)
 
+
+    def _create_display_row(self, parent, label_text, variable, row):
+        ttk.Label(parent, text=label_text).grid(row=row, column=0, sticky=tk.W, pady=5)
+        ttk.Label(parent, textvariable=variable, font=("Arial", 10, "bold")).grid(row=row, column=1, sticky=tk.W, pady=5)
+
+    def update_country(self, lat, lon):
+        def task():
+            self.country_var.set("Loading...")
+            country = geocoding.get_country(lat, lon)
+            self.country_var.set(country)
+        threading.Thread(target=task, daemon=True).start()
+
     def convert_lla_to_ecef(self):
         try:
             lat = float(self.lat_var.get())
@@ -62,6 +80,8 @@ class ConverterApp:
             alt = float(self.alt_var.get())
 
             x, y, z = lla_to_ecef.lla_to_ecef(lat, lon, alt)
+            
+            self.update_country(lat, lon)
 
             self.x_var.set(f"{x:.4f}")
             self.y_var.set(f"{y:.4f}")
@@ -76,6 +96,8 @@ class ConverterApp:
             z = float(self.z_var.get())
 
             lat, lon, alt = lla_to_ecef.ecef_to_lla(x, y, z)
+            
+            self.update_country(lat, lon)
 
             self.lat_var.set(f"{lat:.8f}")
             self.lon_var.set(f"{lon:.8f}")
@@ -87,6 +109,7 @@ class ConverterApp:
         self.lat_var.set("")
         self.lon_var.set("")
         self.alt_var.set("")
+        self.country_var.set("---")
         self.x_var.set("")
         self.y_var.set("")
         self.z_var.set("")
