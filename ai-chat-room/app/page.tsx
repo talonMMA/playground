@@ -8,10 +8,12 @@ import { motion } from 'framer-motion';
 type Message = {
   role: 'user' | 'gemini' | 'gpt';
   content: string;
+  sender?: 'user' | 'botA' | 'botB';
 };
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [showSidebar, setShowSidebar] = useState(false);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [mode, setMode] = useState<'manual' | 'battle'>('manual');
@@ -41,37 +43,54 @@ export default function Home() {
     const runBattleTurn = async () => {
       if (isLoading) return;
 
-      // Determine next speaker
+      // Determine next speaker using explicitly tracked sender if available,
+      // falling back to role based logic for legacy/safety (though sender should always be there now)
       let nextBot: 'gemini' | 'gpt' | null = null;
+      let nextSender: 'botA' | 'botB' | null = null;
 
-      if (lastMessage.role === 'user') {
+      if (lastMessage.role === 'user' || lastMessage.sender === 'user') {
         // User started it, Bot A goes first
         nextBot = botA;
-      } else if (lastMessage.role === botA) {
+        nextSender = 'botA';
+      } else if (lastMessage.sender === 'botA') {
         // Bot A just spoke, Bot B's turn
         nextBot = botB;
-      } else if (lastMessage.role === botB) {
+        nextSender = 'botB';
+      } else if (lastMessage.sender === 'botB') {
         // Bot B just spoke, Bot A's turn
         nextBot = botA;
+        nextSender = 'botA';
+      } else {
+        // Fallback for old messages without sender (unlikely in new session)
+        if (lastMessage.role === botA) {
+          nextBot = botB;
+          nextSender = 'botB';
+        } else {
+          nextBot = botA;
+          nextSender = 'botA';
+        }
       }
 
-      if (nextBot) {
+      if (nextBot && nextSender) {
         setIsLoading(true);
         try {
-          // Slight delay for realism
-          await new Promise(r => setTimeout(r, 1000));
+          // Critical: Gemini Free Tier has strict rate limits. 
+          // Critical: Gemini Free Tier has strict rate limits. 
+          // Delay increased to 10s to ensure we don't get banned.
+          await new Promise(r => setTimeout(r, 10000));
 
           const response = await fetch('/api/chat', {
             method: 'POST',
             body: JSON.stringify({
               model: nextBot,
-              messages: messages
+              messages: messages,
+              isBattle: true
             }),
           });
           const data = await response.json();
 
           if (data.reply) {
-            setMessages(prev => [...prev, { role: nextBot!, content: data.reply }]);
+            setMessages(prev => [...prev, { role: nextBot!, content: data.reply, sender: nextSender as 'botA' | 'botB' }]);
           }
         } catch (e) {
           console.error("Battle Error", e);
@@ -90,22 +109,21 @@ export default function Home() {
     e?.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    const userMsg: Message = { role: 'user', content: input };
+    const userMsg: Message = { role: 'user', content: input, sender: 'user' };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
 
     if (mode === 'manual') {
       setIsLoading(true);
       try {
-        // Default to Gemini for manual for now, or add selector
-        // Let's just default to Bot A's model for manual
+        // Default to Bot A's model for manual
         const response = await fetch('/api/chat', {
           method: 'POST',
           body: JSON.stringify({ model: botA, messages: [...messages, userMsg] }),
         });
         const data = await response.json();
         if (data.reply) {
-          setMessages(prev => [...prev, { role: botA, content: data.reply }]);
+          setMessages(prev => [...prev, { role: botA, content: data.reply, sender: 'botA' }]);
         }
       } catch (error) {
         console.error(error);
@@ -119,12 +137,19 @@ export default function Home() {
   };
 
   return (
-    <main className="flex h-screen bg-neutral-950 text-neutral-100 overflow-hidden font-sans">
-      {/* Sidebar */}
-      <aside className="w-80 bg-neutral-900 border-r border-neutral-800 p-6 hidden md:flex flex-col gap-6">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500" />
-          <h1 className="text-xl font-bold tracking-tight">AI Arena</h1>
+    <main className="flex h-screen bg-neutral-950 text-neutral-100 overflow-hidden font-sans relative">
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-80 bg-neutral-900 border-r border-neutral-800 p-6 flex flex-col gap-6 transition-transform duration-300 ease-in-out md:relative md:translate-x-0
+        ${showSidebar ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
+      `}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500" />
+            <h1 className="text-xl font-bold tracking-tight">AI Arena</h1>
+          </div>
+          <button onClick={() => setShowSidebar(false)} className="md:hidden p-2 text-neutral-400 hover:text-white rounded-lg hover:bg-neutral-800">
+            <span className="text-xl">×</span>
+          </button>
         </div>
 
         <div className="space-y-4">
@@ -189,8 +214,13 @@ export default function Home() {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col relative bg-[url('/grid.svg')] bg-repeat opacity-80">
         {/* Header for Mobile */}
-        <div className="md:hidden p-4 border-b border-neutral-800 bg-neutral-900 flex justify-between items-center">
-          <h1 className="font-bold">AI Arena</h1>
+        <div className="md:hidden p-4 border-b border-neutral-800 bg-neutral-900 flex justify-between items-center z-30 relative">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setShowSidebar(true)} className="p-2 -ml-2 text-neutral-400 hover:text-white">
+              <Settings2 className="w-5 h-5" />
+            </button>
+            <h1 className="font-bold">AI Arena</h1>
+          </div>
           <button onClick={() => setMode(mode === 'battle' ? 'manual' : 'battle')} className="text-xs bg-neutral-800 p-2 rounded">
             {mode === 'battle' ? 'Switch to Manual' : 'Switch to Battle'}
           </button>
@@ -205,7 +235,7 @@ export default function Home() {
             </div>
           )}
           {messages.map((m, i) => (
-            <ChatBubble key={i} role={m.role} content={m.content} />
+            <ChatBubble key={i} role={m.role} content={m.content} sender={m.sender} />
           ))}
           {isLoading && (
             <div className="flex justify-start w-full">
@@ -221,15 +251,26 @@ export default function Home() {
 
         {/* Input Area */}
         <div className="p-4 md:p-6 bg-neutral-900/80 border-t border-neutral-800 backdrop-blur-md">
+          {mode === 'manual' && (
+            <div className="max-w-4xl mx-auto mb-2 px-2 flex items-center gap-2 text-xs text-neutral-400">
+              <span>Replying as:</span>
+              <div className="flex items-center gap-1.5 text-neutral-200 bg-neutral-800 px-2 py-1 rounded">
+                {botA === 'gpt' ? <Bot className="w-3 h-3 text-green-400" /> : <div className="w-3 h-3 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.6)]" />}
+                {botA === 'gpt' ? 'ChatGPT' : 'Gemini'}
+              </div>
+              <span className="text-neutral-600">(Change "Bot A" in sidebar to switch)</span>
+            </div>
+          )}
+
           <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto relative flex gap-4">
             <div className="flex-1 relative">
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={mode === 'battle' ? "Set the topic to start the battle..." : "Type a message..."}
+                placeholder={mode === 'battle' ? "Set the topic to start the battle..." : `Message ${botA === 'gpt' ? 'ChatGPT' : 'Gemini'}...`}
                 className="w-full bg-neutral-800/50 text-white rounded-xl pl-4 pr-12 py-4 focus:outline-none focus:ring-2 focus:ring-blue-500/50 border border-neutral-700 placeholder-neutral-500 shadow-inner"
-                disabled={isBattleRunning} // Disable input while battle runs automatically
+                disabled={isBattleRunning}
               />
             </div>
 

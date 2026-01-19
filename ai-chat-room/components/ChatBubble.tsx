@@ -7,10 +7,39 @@ import clsx from 'clsx';
 interface ChatBubbleProps {
     role: 'user' | 'gemini' | 'gpt';
     content: string;
+    sender?: 'user' | 'botA' | 'botB';
 }
 
-export default function ChatBubble({ role, content }: ChatBubbleProps) {
-    const isUser = role === 'user';
+export default function ChatBubble({ role, content, sender }: ChatBubbleProps) {
+    const isUser = role === 'user' || sender === 'user';
+
+    // Determine style based on Sender if available, otherwise fallback to Role
+    let avatarColor = "bg-blue-500";
+    let Icon = User;
+    let bubbleColor = "bg-blue-600/90 text-white rounded-br-none border-blue-400";
+
+    if (!isUser) {
+        if (sender === 'botA') {
+            avatarColor = "bg-green-500";
+            Icon = Bot;
+            bubbleColor = "bg-green-500/10 text-green-100 rounded-bl-none border-green-500/20";
+        } else if (sender === 'botB') {
+            avatarColor = "bg-purple-500";
+            Icon = Sparkles;
+            bubbleColor = "bg-purple-500/10 text-purple-100 rounded-bl-none border-purple-500/20";
+        } else {
+            // Fallback for old messages
+            if (role === 'gpt') {
+                avatarColor = "bg-teal-500";
+                Icon = Bot;
+                bubbleColor = "bg-teal-500/10 text-teal-100 rounded-bl-none border-teal-500/20";
+            } else {
+                avatarColor = "bg-amber-500";
+                Icon = Sparkles;
+                bubbleColor = "bg-amber-500/10 text-amber-100 rounded-bl-none border-amber-500/20";
+            }
+        }
+    }
 
     return (
         <motion.div
@@ -28,19 +57,15 @@ export default function ChatBubble({ role, content }: ChatBubbleProps) {
                 {/* Avatar */}
                 <div className={clsx(
                     "w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-lg",
-                    role === 'user' ? "bg-blue-500" :
-                        role === 'gpt' ? "bg-green-500" : "bg-purple-500"
+                    avatarColor
                 )}>
-                    {role === 'user' && <User className="w-5 h-5 text-white" />}
-                    {role === 'gpt' && <Bot className="w-5 h-5 text-white" />}
-                    {role === 'gemini' && <Sparkles className="w-5 h-5 text-white" />}
+                    <Icon className="w-5 h-5 text-white" />
                 </div>
 
                 {/* Message Bubble */}
                 <div className={clsx(
                     "p-3 rounded-2xl shadow-sm backdrop-blur-sm border border-opacity-20",
-                    isUser ? "bg-blue-600/90 text-white rounded-br-none border-blue-400" :
-                        "bg-white/10 text-gray-100 rounded-bl-none border-white/10"
+                    bubbleColor
                 )}>
                     <p className="whitespace-pre-wrap text-sm md:text-base leading-relaxed">
                         {content}
