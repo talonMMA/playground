@@ -157,7 +157,7 @@ export default function Home() {
                   onChange={(e) => setBotA(e.target.value as any)}
                 >
                   <option value="gpt">ChatGPT (GPT-3.5)</option>
-                  <option value="gemini">Gemini Pro</option>
+                  <option value="gemini">Gemini 2.0 Flash</option>
                 </select>
               </div>
               <div>
@@ -167,7 +167,7 @@ export default function Home() {
                   value={botB}
                   onChange={(e) => setBotB(e.target.value as any)}
                 >
-                  <option value="gemini">Gemini Pro</option>
+                  <option value="gemini">Gemini 2.0 Flash</option>
                   <option value="gpt">ChatGPT (GPT-3.5)</option>
                 </select>
               </div>

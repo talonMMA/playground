@@ -13,5 +13,5 @@ export const openai = new OpenAI({
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '');
 
 export const getGeminiModel = () => {
-    return genAI.getGenerativeModel({ model: "gemini-pro" });
+    return genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 };

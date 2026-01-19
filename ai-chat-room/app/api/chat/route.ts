@@ -47,6 +47,7 @@ export async function POST(req: Request) {
 
     } catch (error: any) {
         console.error('AI API Error:', error);
-        return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+        console.error('Error Details:', JSON.stringify(error, null, 2));
+        return NextResponse.json({ error: error.message || 'Internal Server Error', details: error }, { status: 500 });
     }
 }
